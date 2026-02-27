@@ -308,9 +308,9 @@ function Policies() {
     Learn More
   </a>
 )}
-                      <button className="action-btn outline">
+                      {/* <button className="action-btn outline">
                         Check Eligibility
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 ))}

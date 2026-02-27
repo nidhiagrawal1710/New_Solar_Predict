@@ -180,13 +180,13 @@ export default function Dashboard({ solarData }) {
 
       {/* Analytics Section */}
       <div className="analytics-section">
-        <div className="section-header">
+        {/* <div className="section-header">
           <h2>Performance Analytics</h2>
           <div className="section-actions">
             <button className="action-btn secondary">View Details</button>
             <button className="action-btn primary">Generate Report</button>
           </div>
-        </div>
+        </div> */}
 
         <div className="analytics-grid">
           <div className="analytics-card large">

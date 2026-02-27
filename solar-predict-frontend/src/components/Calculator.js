@@ -1,16 +1,30 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
+import Select from "react-select";
+
 import "./Calculator.css";
 
-export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
+export default function SolarCalculatorMain({ setSolarData, setLastUpdated }) {
   const [panelArea, setPanelArea] = useState(25);;
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
+  const [countries, setCountries] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [numPanels, setNumPanels] = useState(10);
+  const [panelRating, setPanelRating] = useState(400);
+
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState("");
   const [locationLabel, setLocationLabel] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+
+  const calculatePanelArea = (numPanels, panelRating, efficiency = 0.18) => {
+    const areaPerPanel = panelRating / (1000 * efficiency);
+    return numPanels * areaPerPanel;
+  };
 
   // 📍 Browser Geolocation
   const getLocation = () => {
@@ -37,13 +51,62 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
     }
   };
 
+  useEffect(() => {
+    fetch("https://restcountries.com/v3.1/all?fields=name")
+      .then((res) => res.json())
+      .then((data) => {
+        const formatted = data
+          .map((c) => ({
+            label: c.name.common,
+            value: c.name.common,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        console.log("Countries:", formatted);
+
+        setCountries(formatted);
+      })
+      .catch(() => setError("Failed to load countries"));
+
+  }, []);
+
+
+
+  const fetchCities = async (countryName) => {
+    setCities([]);
+    setCity("");
+
+    try {
+      const res = await fetch(
+        "https://countriesnow.space/api/v0.1/countries/cities",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country: countryName }),
+        }
+      );
+
+      const data = await res.json();
+
+      setCities(
+        data.data.map((c) => ({
+          label: c,
+          value: c,
+        }))
+      );
+    } catch {
+      setError("Failed to load cities");
+    }
+  };
+
+
+
   // 🌍 Convert City+Country → Coordinates
   const getCoordsFromCity = async () => {
     if (!city || !country) {
       setError("Please enter both city and country");
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const res = await fetch(
@@ -78,7 +141,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
       setError("Please enter a valid panel area.");
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const url = `http://127.0.0.1:8000/api/solar-prediction/?lat=${latitude}&lon=${longitude}&panel_area=${panelArea}`;
@@ -97,7 +160,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
 
   return (
     <div className="solar-main-ui">
-      
+
 
       {/* Input Section */}
       <div className="solar-input-card">
@@ -105,7 +168,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
           <span className="solar-card-icon">📍</span>
           Enter Location & Details
         </div>
-        
+
         <div className="solar-card-description">
           Start by providing your location using one of the methods below
         </div>
@@ -151,31 +214,36 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
                 <h4>Search by City</h4>
               </div>
               <p className="method-description">Enter your city and country manually</p>
-              
+
               <div className="city-inputs-grid">
                 <div className="solar-field">
                   <label className="input-label">
                     <span className="label-text">City</span>
-                    <input
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="e.g. New York"
-                      className="solar-input"
+                    <Select
+                      options={cities}
+                      value={city ? { label: city, value: city } : null}
+                      onChange={(selected) => setCity(selected.value)}
+                      placeholder={country ? "Search city..." : "Select country first"}
+                      isSearchable
+                      isDisabled={!country}
                     />
                   </label>
                 </div>
-                
+
                 <div className="solar-field">
                   <label className="input-label">
                     <span className="label-text">Country</span>
-                    <input
-                      type="text"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="e.g. USA"
-                      className="solar-input"
+                    <Select
+                      options={countries}
+                      value={country ? { label: country, value: country } : null}
+                      onChange={(selected) => {
+                        setCountry(selected.value);
+                        fetchCities(selected.value);
+                      }}
+                      placeholder="Search country..."
+                      isSearchable
                     />
+
                   </label>
                 </div>
               </div>
@@ -218,7 +286,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
               <h4>Advanced: Enter Coordinates Directly</h4>
             </div>
             <p className="section-description">For precise location control</p>
-            
+
             <div className="coordinates-inputs">
               <div className="solar-field">
                 <label className="input-label">
@@ -233,7 +301,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
                   />
                 </label>
               </div>
-              
+
               <div className="solar-field">
                 <label className="input-label">
                   <span className="label-text">Longitude</span>
@@ -254,27 +322,88 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
           <div className="solar-field panel-area-section">
             <label className="input-label">
               <span className="label-text">
-                <span className="label-icon">☀️</span>
-                Solar Panel Area (m²)
+                <span className="label-icon">🔢</span>
+                Number of Panels
               </span>
               <input
                 type="number"
-                value={panelArea}
-                onChange={(e) => setPanelArea(e.target.value)}
-                placeholder="Enter panel area in square meters"
+                value={numPanels}
+                onChange={(e) => {
+                  const panels = Number(e.target.value);
+                  setNumPanels(panels);
+
+                  // auto-update panel area
+                  const calculatedArea = calculatePanelArea(panels, panelRating);
+                  setPanelArea(calculatedArea.toFixed(2));
+                }}
+                placeholder="Enter number of solar panels"
                 min="1"
                 className="solar-input"
               />
             </label>
+
             <div className="input-hint">
-              Typical residential systems range from 10-50 m²
+              Example: 8, 10, 12, 20 panels
             </div>
           </div>
 
+          {/* Panel Rating Dropdown */}
+          <div className="solar-field panel-area-section">
+            <label className="input-label">
+              <span className="label-text">
+                <span className="label-icon">⚡</span>
+                Panel Rating (W)
+              </span>
+
+              <select
+                value={panelRating}
+                onChange={(e) => {
+                  const rating = Number(e.target.value);
+                  setPanelRating(rating);
+
+                  // auto-update panel area
+                  const calculatedArea = calculatePanelArea(numPanels, rating);
+                  setPanelArea(calculatedArea.toFixed(2));
+                }}
+                className="solar-input"
+              >
+                <option value={250}>250W</option>
+                <option value={300}>300W</option>
+                <option value={330}>330W</option>
+                <option value={400}>400W</option>
+                <option value={450}>450W</option>
+                <option value={550}>550W</option>
+              </select>
+            </label>
+
+            <div className="input-hint">
+              Auto-calculates total area based on panel wattage 
+            </div>
+          </div>
+
+          {/* (Optional) Show calculated panel area (Read-only) */}
+          <div className="solar-field panel-area-section">
+            <label className="input-label">
+              <span className="label-text">
+                <span className="label-icon">☀️</span>
+                Calculated Panel Area (m²)
+              </span>
+              <input
+                type="number"
+                value={panelArea}
+                readOnly
+                className="solar-input"
+              />
+            </label>
+
+            <div className="input-hint">
+              
+            </div>
+          </div>
           {/* Submit Button */}
           <div className="submit-section">
-            <button 
-              className="solar-calc-btn primary submit-btn" 
+            <button
+              className="solar-calc-btn primary submit-btn"
               type="submit"
               disabled={!latitude || !longitude || !panelArea || isLoading}
             >
@@ -290,7 +419,7 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
                 </>
               )}
             </button>
-            
+
             {(!latitude || !longitude) && (
               <div className="submit-hint">
                 ⓘ Please set your location first
@@ -317,14 +446,14 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
               <span className="card-icon">📊</span>
               Current Solar Energy Potential
             </div>
-            
+
             {locationLabel && (
               <div className="solar-location-info">
                 <span className="location-icon">🌍</span>
                 Location: <strong>{locationLabel}</strong>
               </div>
             )}
-            
+
             <div className="solar-energy-main">
               <span className="solar-energy-large">
                 {prediction.solar_energy?.toFixed(2) || "0.00"}
@@ -339,28 +468,28 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
                 </span>
                 <span className="solar-energy-detail-label">Solar Irradiation</span>
               </div>
-              
+
               <div className="detail-item">
                 <span className="detail-value">
                   {prediction.weather?.wind_speed || "0"} m/s
                 </span>
                 <span className="solar-energy-detail-label">Wind Speed</span>
               </div>
-              
+
               <div className="detail-item temperature">
                 <span className="detail-value">
                   {prediction.weather?.temperature ? (prediction.weather.temperature - 273.15).toFixed(1) : "0.0"}°C
                 </span>
                 <span className="solar-energy-detail-label">Temperature</span>
               </div>
-              
+
               <div className="detail-item aqi">
                 <span className="detail-value">
                   AQI {prediction.aqi?.AQI || "0"} ({prediction.aqi?.Category || "Unknown"})
                 </span>
                 <span className="solar-energy-detail-label">Air Quality</span>
               </div>
-              
+
               <div className="detail-item co2">
                 <span className="detail-value">
                   {prediction.co2_offset?.toFixed(2) || "0.00"} kg CO₂
@@ -376,16 +505,16 @@ export default function SolarCalculatorMain({ setSolarData,setLastUpdated }) {
               <span className="card-icon">💰</span>
               Financial Savings Estimate
             </div>
-            
+
             <div className="solar-finance-result-main">
               <span className="solar-finance-large">
-                 ₹ {((prediction.solar_energy || 0) * 4.43 * 365).toFixed(0)}
+                ₹ {((prediction.solar_energy || 0) * 4.43 * 365).toFixed(0)}
               </span>
               <div className="solar-finance-desc">
                 Estimated Annual Savings (at Rs 4.43/kWh)
               </div>
             </div>
-            
+
             <div className="solar-finance-bottom">
               <span className="efficiency-badge">
                 {panelArea} m² panels • {(prediction.efficiency * 100)?.toFixed(0) || "0"}% efficiency
