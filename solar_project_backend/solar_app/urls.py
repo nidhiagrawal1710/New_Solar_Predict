@@ -7,4 +7,5 @@ urlpatterns = [
 
     # Optional: keep separate solar prediction API if needed
     path('api/solar-prediction/', views.get_solar_prediction, name='solar_prediction'),
+    path('api/forecasting-prediction/', views.get_7day_daily_solar_forecast, name='forecasting_prediction'),
 ]

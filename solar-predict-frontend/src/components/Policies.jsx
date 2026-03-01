@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./Policies.css";
-import { FaSolarPanel, FaRegLightbulb, FaRegChartBar, FaSearch, FaDownload, FaShare, FaBookmark, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaSolarPanel, FaRegLightbulb, FaRegChartBar, FaSearch, FaShare, FaBookmark, FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 const policiesData = [
   {
@@ -186,10 +186,10 @@ function Policies() {
               className="search-input"
             />
           </div>
-          <button className="action-btn secondary">
+          {/* <button className="action-btn secondary">
             <FaDownload />
             Export Report
-          </button>
+          </button> */}
         </div>
       </div>
 

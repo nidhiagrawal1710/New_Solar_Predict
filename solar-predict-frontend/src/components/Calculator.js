@@ -4,7 +4,7 @@ import Select from "react-select";
 
 import "./Calculator.css";
 
-export default function SolarCalculatorMain({ setSolarData, setLastUpdated }) {
+export default function SolarCalculatorMain({ setSolarData, setLastUpdated ,setForecastParams}) {
   const [panelArea, setPanelArea] = useState(25);;
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -132,32 +132,44 @@ export default function SolarCalculatorMain({ setSolarData, setLastUpdated }) {
 
   // Call Backend
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!latitude || !longitude) {
-      setError("Please provide location (GPS or City/Country).");
-      return;
-    }
-    if (!panelArea || panelArea <= 0) {
-      setError("Please enter a valid panel area.");
-      return;
-    }
+  e.preventDefault();
 
-    setIsLoading(true);
-    try {
-      const url = `http://127.0.0.1:8000/api/solar-prediction/?lat=${latitude}&lon=${longitude}&panel_area=${panelArea}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setPrediction(data);
-      setSolarData(data);
-      setLastUpdated(new Date());
-      setError("");
-    } catch {
-      setError("Backend request failed.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (!latitude || !longitude) {
+    setError("Please provide location (GPS or City/Country).");
+    return;
+  }
 
+  if (!panelArea || panelArea <= 0) {
+    setError("Please enter a valid panel area.");
+    return;
+  }
+
+  // ✅ Just pass already calculated panelArea
+  if (setForecastParams) {
+    setForecastParams({
+      latitude,
+      longitude,
+      panelArea
+    });
+  }
+
+  setIsLoading(true);
+
+  try {
+    const url = `http://127.0.0.1:8000/api/solar-prediction/?lat=${latitude}&lon=${longitude}&panel_area=${panelArea}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    setPrediction(data);
+    setSolarData(data);
+    setLastUpdated(new Date());
+    setError("");
+  } catch {
+    setError("Backend request failed.");
+  } finally {
+    setIsLoading(false);
+  }
+};
   return (
     <div className="solar-main-ui">
 
